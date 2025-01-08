@@ -7,12 +7,11 @@ from datetime import datetime
 from tqdm import tqdm
 
 import logging_config
-
+import service_billboard
 from sequence_validator import SequenceValidator
 from hash_validator import ChecksumValidator
 from file_validator import FileValidator
 from report_generator import ReportGenerator
-
 
 def capture_file_list():
     root = tk.Tk()
@@ -122,6 +121,8 @@ def main():
 
     sequence_validator = dpx_sequence_check(file_list, hash_manifest[0])
 
+    service_billboard.start_service_message()
+
     for file in tqdm(file_list):
         try:
             checksums_verified, checksums_failed, files_failed = validate_checksums_files(file, hash_manifest[0])
@@ -147,3 +148,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    input("Press any key to exit")
