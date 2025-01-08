@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import json
+import sys
 
 from dpx_profile_data import switches, validation_map
 
@@ -28,17 +29,25 @@ class FileValidator:
         self.format_verified = False
 
     def read_attributes(self):
+
         command = ["mediainfo", switches, self.file]
+
         try:
             self.file_attributes = subprocess.check_output(command)
         except subprocess.CalledProcessError as e:
-            logger.error(f"{self.file}, {e}")
+            logging.critical(f"MediaInfo failed to process the file {self.file}: {e}")
+            print(f"MediaInfo failed to process the file {self.file}. SYSTEM EXIT.")
+            sys.exit(1)
 
         except FileNotFoundError as e:
-            logger.error(f"{self.file}, {e}")
+            logging.critical(f"MediaInfo is not installed or not found in the system PATH: {e}")
+            print("MediaInfo is not installed or not found in the system PATH. SYSTEM EXIT.")
+            sys.exit(1)
 
         except (IOError, OSError) as e:
-            logger.error(f"{self.file}, {e}")
+            logging.critical(f"An error occurred while trying to run MediaInfo: {e}")
+            print(f"An error occurred while trying to run MediaInfo. SYSTEM EXIT. {e}")
+            sys.exit(1)
 
     def parse_attributes(self):
         try:
