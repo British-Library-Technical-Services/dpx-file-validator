@@ -65,7 +65,7 @@ class InventoryGenerator:
 
                 self.verify_shelfmark_found()
                 self.get_size_and_count()
-                self.verify_file_type()
+                # self.verify_file_type()
 
         except KeyError as ke:
             logger.error("Key error occurred while parsing object keys.", {ke})
@@ -80,6 +80,9 @@ class InventoryGenerator:
             ):
                 self.object[self.found] = True
                 self.object[self.directory] = self.dirpath
+
+                self.verify_file_type()
+
             else:
                 pass
 
@@ -115,9 +118,9 @@ class InventoryGenerator:
         try:
             if self.format == self.type:
                 self.object[self.format] = True
-
             else:
                 pass
+
         except AttributeError as ae:
             logger.error(
                 "Attribute error occurred during file object validation.", {ae}
