@@ -1,7 +1,6 @@
 **/__pycache__
 **/_test_files
 *repo-mediaarea_1.0-16_all.deb
-*shelmark_format_list.py
-*folder_strucutre.txt
-*_preserved_sm_data.json
-*shelfmark_list.json
+*folder_structure.txt
+*data/_preserved_sm_data.json
+*data/shelfmark_data.json
