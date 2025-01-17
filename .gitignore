@@ -1,5 +1,6 @@
 **/__pycache__
 **/_test_files
+*.env
 *repo-mediaarea_1.0-16_all.deb
 *folder_structure.txt
 *data/_preserved_sm_data.json
