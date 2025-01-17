@@ -186,6 +186,7 @@ def main():
 
     billboard_text.start_service_message()
 
+    # File Inventory Checks
     try:
         for dirpath, _, _ in os.walk(location):
             mag_files = glob.glob(os.path.join(dirpath, MAG))
@@ -203,6 +204,7 @@ def main():
         logger.critical(f"Error processing directory: {e}")
         sys.exit(1)
 
+    # File-Checksum Validation Checks
     try:
         for dirpath, _, _ in os.walk(location):
             mag_files = glob.glob(os.path.join(dirpath, MAG))
