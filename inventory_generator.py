@@ -1,15 +1,20 @@
+from dotenv import load_dotenv
 import logging
 import sys
 import glob
 import os
 import json
 
+import config
+
 logger = logging.getLogger(__name__)
 
 
 class InventoryGenerator:
     def __init__(self, location, file):
-        self.json_data = "./data/shelfmark_data.json"
+        load_dotenv()
+
+        self.json_data = os.getenv("JSON_FILE")
         self.location = location
         self.file = file
         self.file_list = glob.glob(location + "/**/*.*", recursive=True)
