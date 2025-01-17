@@ -7,14 +7,26 @@ Please do not close This window until the service has completed.
 """
     print(service_message)
 
-def mag_file_progress():
+def mag_inventory_text():
     service_message = """
-WAV file validation checks in progress:
+Mag file inventory checks in progress:
 """
     print(service_message.strip("\n"))
 
-def film_file_progress():
+def film_inventory_text():
     service_message = """
-DPX file validation checks in progress:
+Film scan inventory checks in progress:
+"""
+    print(service_message.strip("\n"))
+
+def mag_validation_text():
+    service_message = """
+Mag file validation checks in progress:
+"""
+    print(service_message.strip("\n"))
+
+def film_validation_text():
+    service_message = """
+Film scan file validation checks in progress:
 """
     print(service_message.strip("\n"))
