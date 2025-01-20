@@ -4,14 +4,17 @@ import os
 logger = logging.getLogger(__name__)
 
 class ReportGenerator:
-    def __init__(self, write_location, start_time, end_time, duration, dpx_files, manifest_files, missing_files, files_failed, checksums_verified, checksums_failed):
+    def __init__(self, write_location, start_time, end_time, duration, mag_list, film_list, manifest_files, missing_files, files_failed, checksums_verified, checksums_failed):
         self.write_location = write_location
         self.start_time = start_time
         self.end_time = end_time
         self.duration = duration
-        self.dpx_files = dpx_files
-        self.first_file = dpx_files[0].split("/")[-1]
-        self.last_file = dpx_files[-1].split("/")[-1]
+        self.wav_files = mag_list
+        self.first_mag_file = mag_list[0].split("/")[-1]
+        self.last_mag_file = mag_list[-1].split("/")[-1]
+        self.dpx_files = film_list
+        self.first_film_file = film_list[0].split("/")[-1]
+        self.last_film_file = film_list[-1].split("/")[-1]
         self.manifest_files = manifest_files
         self.missing_files = missing_files
         self.files_failed = files_failed
@@ -26,9 +29,9 @@ class ReportGenerator:
         self.report = None
 
     def write_report(self):
-
         try:
-            with open(os.path.join(self.write_location, f"dpx_data_report_{self.end_time}.md"), "w", encoding=("utf-8")) as f:
+            report_name = f"{self.write_location.split("/")[-1]}_{self.end_time}.md"
+            with open(os.path.join(self.write_location, report_name), "w", encoding=("utf-8")) as f:
                 f.write(os.path.join(self.report))
         except Exception as e:
             logger.error(f"Error writing report: {e}")
@@ -36,23 +39,31 @@ class ReportGenerator:
     def generate_report(self):
 
         self.report = f"""
-# DPX DATA REPORT
+# DPX DATA REPORT: {self.write_location}
 
 ## Report Summary
-* Shelfmark: 
 * Location: {self.write_location}
 * Started on {self.start_time} 
 * Ended on {self.end_time}
 * Total duration: {self.duration}
+* Total number of files: {len(self.dpx_files) + len(self.wav_files)}
 
-## File Count
+## DPX File Count
 {self.file_count_report}
-## Sequence Validation
-* First file in sequence: {self.first_file}
-* Last file in sequence: {self.last_file}
+
+## DPX Sequence Validation
+* First file in sequence: {self.first_film_file}
+* Last file in sequence: {self.last_film_file}
 {self.missing_sequence_report}
+
+## Mag File Count
+Count: {len(self.wav_files)}
+* First file in sequence: {self.first_mag_file}
+* Last file in sequence: {self.last_mag_file}
+
 ## Checksum Validation
 {self.checksum_report}
+
 ## File Attributes Validation
 {self.file_attributes_report}
 
@@ -104,12 +115,12 @@ PASS: all checksums verified
     def file_attributes_summary(self):
         if self.files_failed != []:
             self.file_attributes_report = f"""
-ERROR: {len(self.files_failed)} DPX files failed profile validation.  See log for complete list.
+ERROR: {len(self.files_failed)} files failed profile validation.  See log for complete list.
     """
             for item in self.files_failed:
                 self.file_attributes_report += f"""
 * {item}"""
         else:
             self.file_attributes_report = f"""
-PASS: all files passed DPX profile validation
+PASS: all files passed format profile validation
     """
