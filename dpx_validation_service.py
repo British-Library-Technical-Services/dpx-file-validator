@@ -1,5 +1,6 @@
 import logging
 import os
+from dotenv import load_dotenv
 import glob
 import tkinter as tk
 from tkinter import filedialog
@@ -9,15 +10,35 @@ from tqdm import tqdm
 
 import logging_config
 import data.billboard_text as billboard_text
+import config
 from inventory_generator import InventoryGenerator
 from validators.dpx_sequence_validator import SequenceValidator
 from validators.checksum_validator import ChecksumValidator
 from validators.file_attributes_validator import FileValidator
 from report_generator import ReportGenerator
 
+cumulative_mag_files = []
+cumulative_film_files = []
 file_attributes_failed = []
 checksums_verified = []
 checksums_failed = []
+
+def test_source_location():
+    load_dotenv()
+    try:
+        location = os.getenv("TEST_LOCATION")
+        if location != "":
+            try:
+                return location
+
+            except Exception as e:
+                logging.error(e)
+        else:
+            logging.error("No source location selected.  Service will exit")
+            sys.exit()
+
+    except Exception as e:
+        logging.error("Unable able to open directory", e)
 
 
 def set_source_location():
@@ -43,8 +64,9 @@ def set_source_location():
 
 def intialise_service():
     start_time = datetime.now()
-    location = set_source_location()
-    logging_config.setup_logger(location)
+    location = test_source_location()
+    # location = set_source_location()
+    logging_config.setup_logger()
     logger = logging.getLogger(__name__)
 
     return start_time, location, logger
@@ -77,14 +99,42 @@ def checksum_validation(file, checksums):
     return checksum_validator.hash_verified
 
 
-def mag_validation_service(file):
-    format_verified = file_attributes_validation(file)
+def dpx_sequence_check(files, path):
+    md5 = "*.md5"
+    checksum_manifest = glob.glob(os.path.join(path, md5))
+    sequence_validator = SequenceValidator(files, checksum_manifest[0])
+    sequence_validator.count_manifest_lines()
+    sequence_validator.count_file_sequence()
 
-    if not format_verified:
-        file_attributes_failed.append(file)
+    return checksum_manifest, sequence_validator
 
-    checksum_file = f"{file}.md5"
-    if os.path.exists(checksum_file):
+
+def process_file_inventory(files, path):
+    for file in tqdm(files):
+        inventory_validation(path, file)
+
+
+def process_file_validation(files):
+    for file in tqdm(files, desc="File Attributes"):
+        format_verified = file_attributes_validation(file)
+        if not format_verified:
+            file_attributes_failed.append(file)
+        
+
+def mag_checksum_validation(files):
+    for file in tqdm(files, desc="File Checksums"):
+        checksum_file = f"{file}.md5"
+        if os.path.exists(checksum_file):
+            hash_verified = checksum_validation(file, checksum_file)
+
+            if hash_verified:
+                checksums_verified.append(file)
+            else:
+                checksums_failed.append(file)
+
+
+def film_checksum_validation(files, checksum_file):
+    for file in tqdm(files, desc="File Checksums"):
         hash_verified = checksum_validation(file, checksum_file)
 
         if hash_verified:
@@ -93,34 +143,13 @@ def mag_validation_service(file):
             checksums_failed.append(file)
 
 
-def dpx_validation_service(file, checksum_manifest):
-    format_verified = file_attributes_validation(file)
-
-    if not format_verified:
-        file_attributes_failed.append(file)
-
-    hash_verified = checksum_validation(file, checksum_manifest)
-
-    if hash_verified:
-        checksums_verified.append(file)
-    else:
-        checksums_failed.append(file)
-
-
-def dpx_sequence_check(file_list, hash_manifest):
-    sequence_validator = SequenceValidator(file_list, hash_manifest)
-    sequence_validator.count_manifest_lines()
-    sequence_validator.count_file_sequence()
-
-    return sequence_validator
-
-
 def generate_report(
     location,
     start_time,
     end_time,
     duration,
-    file_list,
+    mag_files,
+    film_files,
     line_count,
     missing_sequence,
     files_failed,
@@ -133,7 +162,8 @@ def generate_report(
         start_time,
         end_time,
         duration,
-        file_list,
+        mag_files,
+        film_files,
         line_count,
         missing_sequence,
         files_failed,
@@ -150,8 +180,8 @@ def generate_report(
 
 
 def main():
-    mag = "*.wav"
-    film = "*.dpx"
+    MAG = config.CONFIG["extensions"]["MAG"]
+    FILM = config.CONFIG["extensions"]["FILM"]
 
     start_time, location, logger = intialise_service()
 
@@ -160,42 +190,67 @@ def main():
 
     billboard_text.start_service_message()
 
-    for dirpath, _, _ in os.walk(location):
-        mag_files = glob.glob(os.path.join(dirpath, mag))
-        film_files = glob.glob(os.path.join(dirpath, film))
+    # File Inventory Checks
+    try:
+        for dirpath, _, _ in os.walk(location):
+            mag_files = glob.glob(os.path.join(dirpath, MAG))
+            film_files = glob.glob(os.path.join(dirpath, FILM))
 
-        if mag_files == []:
-            pass
-        else:
-            billboard_text.mag_file_progress()
-            for file in tqdm(mag_files):
-                inventory_validation(location, file)
-                mag_validation_service(file)
+            if mag_files:
+                billboard_text.mag_inventory_text()
+                process_file_inventory(files=mag_files, path=dirpath)
 
-        if film_files == []:
-            pass
-        else:
-            billboard_text.film_file_progress()
-            checksum_manifest = glob.glob(os.path.join(dirpath, "*.md5"))
-            sequence_validation = dpx_sequence_check(film_files, checksum_manifest[0])
-            for file in tqdm(film_files):
-                inventory_validation(location, file)
-                dpx_validation_service(file, checksum_manifest[0])
+            if film_files:
+                billboard_text.film_inventory_text()
+                process_file_inventory(files=film_files, path=dirpath)
+
+    except Exception as e:
+        logger.critical(f"Error processing directory: {e}")
+        sys.exit(1)
+
+    # File-Checksum Validation Checks
+    try:
+        for dirpath, _, _ in os.walk(location):
+            mag_files = glob.glob(os.path.join(dirpath, MAG))
+            film_files = glob.glob(os.path.join(dirpath, FILM))
+
+
+            if mag_files:
+                cumulative_mag_files.extend(mag_files)
+                billboard_text.mag_validation_text()
+                process_file_validation(files=mag_files)
+                mag_checksum_validation(files=mag_files)
+
+            if film_files:
+                cumulative_film_files.extend(film_files)
+                billboard_text.film_validation_text()
+                checksums, sequence_validation = dpx_sequence_check(files=film_files, path=dirpath)
+                process_file_validation(files=film_files)
+                film_checksum_validation(files=film_files, checksum_file=checksums[0])
+        
+
+    except Exception as e:
+        logger.critical(f"Error processinf files: {e}")
+        sys.exit(1)
 
     end_time = datetime.now()
-    # duration = end_time - start_time
+    duration = end_time - start_time
 
-    # generate_report(location,
-    #     start_time,
-    #     end_time,
-    #     duration,
-    #     file_list,
-    #     sequence_validator.line_count,
-    #     sequence_validator.missing_sequence,
-    #     files_failed,
-    #     checksums_verified,
-    #     checksums_failed,
-    # )
+    print(len(cumulative_mag_files))
+    print(len(cumulative_film_files))
+
+    generate_report(location,
+        start_time,
+        end_time,
+        duration,
+        cumulative_mag_files,
+        cumulative_film_files,
+        sequence_validation.line_count,
+        sequence_validation.missing_sequence,
+        file_attributes_failed,
+        checksums_verified,
+        checksums_failed,
+    )
 
     logger.info(f"End time: {end_time}")
 

@@ -1,5 +1,7 @@
 **/__pycache__
 **/_test_files
+**logs
+*.env
 *repo-mediaarea_1.0-16_all.deb
 *MediaInfo.exe
 *folder_structure.txt

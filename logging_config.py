@@ -2,12 +2,13 @@ import os
 import logging
 from datetime import datetime
 
-def setup_logger(location):
-    if not os.path.exists(location):
-        os.makedirs(location)
+def setup_logger():
+    log_dir = os.path.join(os.getcwd(), "logs")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file = os.path.join(location, f"{timestamp}_dpx_data.log")
+    log_file = os.path.join(log_dir, f"{timestamp}_dpx_data.log")
 
     logging.basicConfig(
         level=logging.INFO,
