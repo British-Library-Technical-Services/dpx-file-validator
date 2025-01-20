@@ -17,6 +17,8 @@ from validators.checksum_validator import ChecksumValidator
 from validators.file_attributes_validator import FileValidator
 from report_generator import ReportGenerator
 
+cumulative_mag_files = []
+cumulative_film_files = []
 file_attributes_failed = []
 checksums_verified = []
 checksums_failed = []
@@ -64,7 +66,7 @@ def intialise_service():
     start_time = datetime.now()
     location = test_source_location()
     # location = set_source_location()
-    logging_config.setup_logger(location)
+    logging_config.setup_logger()
     logger = logging.getLogger(__name__)
 
     return start_time, location, logger
@@ -146,7 +148,8 @@ def generate_report(
     start_time,
     end_time,
     duration,
-    file_list,
+    mag_files,
+    film_files,
     line_count,
     missing_sequence,
     files_failed,
@@ -159,7 +162,8 @@ def generate_report(
         start_time,
         end_time,
         duration,
-        file_list,
+        mag_files,
+        film_files,
         line_count,
         missing_sequence,
         files_failed,
@@ -210,35 +214,43 @@ def main():
             mag_files = glob.glob(os.path.join(dirpath, MAG))
             film_files = glob.glob(os.path.join(dirpath, FILM))
 
+
             if mag_files:
+                cumulative_mag_files.extend(mag_files)
                 billboard_text.mag_validation_text()
                 process_file_validation(files=mag_files)
                 mag_checksum_validation(files=mag_files)
 
             if film_files:
+                cumulative_film_files.extend(film_files)
                 billboard_text.film_validation_text()
                 checksums, sequence_validation = dpx_sequence_check(files=film_files, path=dirpath)
                 process_file_validation(files=film_files)
                 film_checksum_validation(files=film_files, checksum_file=checksums[0])
+        
 
     except Exception as e:
         logger.critical(f"Error processinf files: {e}")
         sys.exit(1)
 
     end_time = datetime.now()
-    # duration = end_time - start_time
+    duration = end_time - start_time
 
-    # generate_report(location,
-    #     start_time,
-    #     end_time,
-    #     duration,
-    #     file_list,
-    #     sequence_validator.line_count,
-    #     sequence_validator.missing_sequence,
-    #     files_failed,
-    #     checksums_verified,
-    #     checksums_failed,
-    # )
+    print(len(cumulative_mag_files))
+    print(len(cumulative_film_files))
+
+    generate_report(location,
+        start_time,
+        end_time,
+        duration,
+        cumulative_mag_files,
+        cumulative_film_files,
+        sequence_validation.line_count,
+        sequence_validation.missing_sequence,
+        file_attributes_failed,
+        checksums_verified,
+        checksums_failed,
+    )
 
     logger.info(f"End time: {end_time}")
 
