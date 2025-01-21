@@ -68,7 +68,7 @@ class InventoryGenerator:
                 self.size = key_list[4]
                 self.count = key_list[5]
 
-                self.verify_shelfmark_found
+                self.verify_shelfmark_found()
                 if self.object[self.found]:
                     self.get_size_and_count()
                     self.verify_file_type()
@@ -88,9 +88,6 @@ class InventoryGenerator:
             ):
                 self.object[self.found] = True
                 self.object[self.directory] = self.dirpath
-
-                self.verify_file_type()
-
             else:
                 pass
 
@@ -127,7 +124,8 @@ class InventoryGenerator:
             if self.format == self.type:
                 self.object[self.format] = True
             else:
-                self.object[self.format] = False
+                # self.object[self.format] = False
+                pass
 
         except AttributeError as ae:
             logger.error(
