@@ -30,7 +30,7 @@ class ReportGenerator:
 
     def write_report(self):
         try:
-            report_name = f"{self.write_location.split("/")[-1]}_{self.end_time}.md"
+            report_name = f"{self.write_location.split('/')[-1]}_{self.end_time}.md"
             with open(os.path.join(self.write_location, report_name), "w", encoding=("utf-8")) as f:
                 f.write(os.path.join(self.report))
         except Exception as e:
