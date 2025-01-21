@@ -231,26 +231,23 @@ def main():
         logger.critical(f"Error processinf files: {e}")
         sys.exit(1)
 
-    # end_time = datetime.now()
-    # duration = end_time - start_time
+    end_time = datetime.now()
+    duration = end_time - start_time
 
-    # print(len(cumulative_mag_files))
-    # print(len(cumulative_film_files))
+    generate_report(location,
+        start_time,
+        end_time,
+        duration,
+        cumulative_mag_files,
+        cumulative_film_files,
+        sequence_validation.line_count,
+        sequence_validation.missing_sequence,
+        file_attributes_failed,
+        checksums_verified,
+        checksums_failed,
+    )
 
-    # generate_report(location,
-    #     start_time,
-    #     end_time,
-    #     duration,
-    #     cumulative_mag_files,
-    #     cumulative_film_files,
-    #     sequence_validation.line_count,
-    #     sequence_validation.missing_sequence,
-    #     file_attributes_failed,
-    #     checksums_verified,
-    #     checksums_failed,
-    # )
-
-    # logger.info(f"End time: {end_time}")
+    logger.info(f"End time: {end_time}")
 
 
 if __name__ == "__main__":
