@@ -64,8 +64,8 @@ def set_source_location():
 
 def intialise_service():
     start_time = datetime.now()
-    location = test_source_location()
-    # location = set_source_location()
+    # location = test_source_location()
+    location = set_source_location()
     logging_config.setup_logger()
     logger = logging.getLogger(__name__)
 
@@ -77,7 +77,6 @@ def inventory_validation(location, file):
     inventory_generator.parse_file_name_and_type()
     inventory_generator.read_json_inventory()
     inventory_generator.parse_object_keys()
-    inventory_generator.verify_file_type()
     inventory_generator.write_inventory_data()
 
 
@@ -193,8 +192,8 @@ def main():
     # File Inventory Checks
     try:
         for dirpath, _, _ in os.walk(location):
-            mag_files = glob.glob(os.path.join(dirpath, MAG))
-            film_files = glob.glob(os.path.join(dirpath, FILM))
+            mag_files = sorted(glob.glob(os.path.join(dirpath, MAG)))
+            film_files = sorted(glob.glob(os.path.join(dirpath, FILM)))
 
             if mag_files:
                 billboard_text.mag_inventory_text()
@@ -211,9 +210,8 @@ def main():
     # File-Checksum Validation Checks
     try:
         for dirpath, _, _ in os.walk(location):
-            mag_files = glob.glob(os.path.join(dirpath, MAG))
-            film_files = glob.glob(os.path.join(dirpath, FILM))
-
+            mag_files = sorted(glob.glob(os.path.join(dirpath, MAG)))
+            film_files = sorted(glob.glob(os.path.join(dirpath, FILM)))
 
             if mag_files:
                 cumulative_mag_files.extend(mag_files)
@@ -233,26 +231,26 @@ def main():
         logger.critical(f"Error processinf files: {e}")
         sys.exit(1)
 
-    end_time = datetime.now()
-    duration = end_time - start_time
+    # end_time = datetime.now()
+    # duration = end_time - start_time
 
-    print(len(cumulative_mag_files))
-    print(len(cumulative_film_files))
+    # print(len(cumulative_mag_files))
+    # print(len(cumulative_film_files))
 
-    generate_report(location,
-        start_time,
-        end_time,
-        duration,
-        cumulative_mag_files,
-        cumulative_film_files,
-        sequence_validation.line_count,
-        sequence_validation.missing_sequence,
-        file_attributes_failed,
-        checksums_verified,
-        checksums_failed,
-    )
+    # generate_report(location,
+    #     start_time,
+    #     end_time,
+    #     duration,
+    #     cumulative_mag_files,
+    #     cumulative_film_files,
+    #     sequence_validation.line_count,
+    #     sequence_validation.missing_sequence,
+    #     file_attributes_failed,
+    #     checksums_verified,
+    #     checksums_failed,
+    # )
 
-    logger.info(f"End time: {end_time}")
+    # logger.info(f"End time: {end_time}")
 
 
 if __name__ == "__main__":
