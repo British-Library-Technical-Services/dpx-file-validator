@@ -4,7 +4,7 @@ switches = "--Output=JSON"
 # Media info @Audio output
 wav_validation_map = {
     "Format":"PCM",
-    "SamplingRate":"96000",
+    "SamplingRate":"48000",
     "BitDepth":"24",
 }
 
