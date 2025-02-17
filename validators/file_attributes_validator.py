@@ -107,6 +107,7 @@ class FileValidator:
                 self.format_verified = True
             else:
                 self.format_verified = False
+                logger.critical(f"File attribues did not validate {self.file}")
 
         except IndexError as e:
             logger.error(f"{self.file}, {e}")
@@ -133,6 +134,7 @@ class FileValidator:
                 self.format_verified = True
             else:
                 self.format_verified = False
+                logger.critical(f"File attribues did not validate {self.file}")
 
         except IndexError as e:
             logger.error(f"{self.file}, {e}")
