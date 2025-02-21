@@ -13,6 +13,7 @@ import data.billboard_text as billboard_text
 import config
 
 from progress_loop import Spinner
+from database_manager import InitDatabase, DatabaseManager
 from inventory_generator import InventoryGenerator
 from validators.dpx_sequence_validator import SequenceValidator
 from validators.checksum_validator import ChecksumValidator
@@ -74,11 +75,14 @@ def intialise_service():
 
 
 def inventory_validation(location, file):
-    inventory_generator = InventoryGenerator(location, file)
-    inventory_generator.parse_file_name_and_type()
-    inventory_generator.read_json_inventory()
-    inventory_generator.parse_object_keys()
-    inventory_generator.write_inventory_data()
+    # inventory_generator = InventoryGenerator(location, file)
+    # inventory_generator.parse_file_name_and_type()
+    # inventory_generator.read_json_inventory()
+    # inventory_generator.parse_object_keys()
+    # inventory_generator.write_inventory_data()
+    database_manager = DatabaseManager(location, file)
+    database_manager.shelfmark_check()
+
 
 
 def file_attributes_validation(file):
@@ -148,6 +152,11 @@ def film_checksum_validation(files, checksum_file):
 
 
 def main():
+    init_db = InitDatabase()
+    # init_db.table_reset()
+    init_db.init_database()
+    init_db.import_data()
+
     MAG = config.CONFIG["extensions"]["MAG"]
     FILM = config.CONFIG["extensions"]["FILM"]
 
@@ -178,31 +187,31 @@ def main():
     finally:
         progress_spinner.stop()
 
-    # File-Checksum Validation Checks
-    billboard_text.validation_text()
+    # # File-Checksum Validation Checks
+    # billboard_text.validation_text()
     
-    try:
-        for dirpath, _, _ in os.walk(location):
-            mag_files = sorted(glob.glob(os.path.join(dirpath, MAG)))
-            film_files = sorted(glob.glob(os.path.join(dirpath, FILM)))
+    # try:
+    #     for dirpath, _, _ in os.walk(location):
+    #         mag_files = sorted(glob.glob(os.path.join(dirpath, MAG)))
+    #         film_files = sorted(glob.glob(os.path.join(dirpath, FILM)))
 
-            if mag_files:
-                billboard_text.mag_files_processing_text(path=dirpath)
-                cumulative_mag_files.extend(mag_files)
-                process_file_validation(files=mag_files)
-                mag_checksum_validation(files=mag_files)
+    #         if mag_files:
+    #             billboard_text.mag_files_processing_text(path=dirpath)
+    #             cumulative_mag_files.extend(mag_files)
+    #             process_file_validation(files=mag_files)
+    #             mag_checksum_validation(files=mag_files)
 
-            if film_files:
-                billboard_text.dpx_files_processing_text(path=dirpath)
-                cumulative_film_files.extend(film_files)
-                checksums, sequence_validation = dpx_sequence_check(files=film_files, path=dirpath)
-                process_file_validation(files=film_files)
-                film_checksum_validation(files=film_files, checksum_file=checksums[0])
+    #         if film_files:
+    #             billboard_text.dpx_files_processing_text(path=dirpath)
+    #             cumulative_film_files.extend(film_files)
+    #             checksums, sequence_validation = dpx_sequence_check(files=film_files, path=dirpath)
+    #             process_file_validation(files=film_files)
+    #             film_checksum_validation(files=film_files, checksum_file=checksums[0])
         
 
-    except Exception as e:
-        logger.critical(f"Error processinf files: {e}")
-        sys.exit(1)
+    # except Exception as e:
+    #     logger.critical(f"Error processinf files: {e}")
+    #     sys.exit(1)
 
     end_time = datetime.now()
     duration = end_time - start_time
