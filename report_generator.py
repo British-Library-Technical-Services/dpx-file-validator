@@ -1,9 +1,34 @@
+"""Markdown report generation for DPX validation results.
+
+`ReportGenerator` assembles a human‑readable Markdown summary capturing:
+    * Run timing (start, end, duration)
+    * File counts (DPX vs. manifest, mag)
+    * Sequence validation (first/last frame, missing frames list)
+    * Checksum verification results
+    * File attribute (profile) validation results
+"""
+
 import logging
 import os
 
 logger = logging.getLogger(__name__)
 
 class ReportGenerator:
+    """Construct and persist a Markdown report of validation outcomes.
+
+    Args:
+        write_location (str): Directory where report will be written.
+        start_time (datetime): Validation start timestamp.
+        end_time (datetime): Validation end timestamp.
+        duration (timedelta): Total run duration.
+        mag_list (list[str]): List of processed mag (WAV) file paths.
+        film_list (list[str]): List of processed DPX frame file paths.
+        manifest_files (int|list): Manifest line count or representation.
+        missing_files (list[int|str]): Identifiers of missing sequence items.
+        files_failed (list[str]): Files failing attribute/profile validation.
+        checksums_verified (list[str]): Files passing checksum validation.
+        checksums_failed (list[str]): Files failing checksum validation.
+    """
     def __init__(self, write_location, start_time, end_time, duration, mag_list, film_list, manifest_files, missing_files, files_failed, checksums_verified, checksums_failed):
         self.write_location = write_location
         self.start_time = start_time
@@ -29,6 +54,10 @@ class ReportGenerator:
         self.report = None
 
     def write_report(self):
+        """Write the generated Markdown report to file.
+
+        Report filename pattern: <basename_of_write_location>_<end_time>.md
+        """
         try:
             report_name = f"{self.write_location.split('/')[-1]}_{self.end_time}.md"
             with open(os.path.join(self.write_location, report_name), "w", encoding=("utf-8")) as f:
@@ -37,6 +66,7 @@ class ReportGenerator:
             logger.error(f"Error writing report: {e}")
     
     def generate_report(self):
+        """Assemble the full Markdown report body in `self.report`."""
 
         self.report = f"""
 # DPX DATA REPORT: {self.write_location}
@@ -70,6 +100,10 @@ Count: {len(self.wav_files)}
         """
 
     def line_count_file_summary(self):
+        """Build the DPX vs. manifest file count section.
+
+        Populates `file_count_report` with PASS/ERROR messaging.
+        """
         if self.dpx_files != self.manifest_files:
             self.file_count_report = f""" 
 * DPX files in folder: {len(self.dpx_files)}
@@ -87,6 +121,11 @@ PASS: number of dpx files in folder == number listed in the checksum mainfest
     """
 
     def missing_sequence_summary(self):
+        """Build the missing sequence frames section.
+
+        Populates `missing_sequence_report`, enumerating missing items when
+        present.
+        """
         if self.missing_files != []:
             self.missing_sequence_report = f"""
 ERROR: {len(self.missing_files)} missing items from file sequence.  See log for complete list.
@@ -100,6 +139,7 @@ PASS: no missing items from file sequence
     """
     
     def checksum_summary(self):
+        """Build the checksum validation section (PASS/ERROR)."""
         if self.checksums_failed != []:
             self.checksum_report = f"""
 ERROR: {len(self.checksums_failed)} checksums failed
@@ -113,6 +153,7 @@ PASS: all checksums verified
     """
     
     def file_attributes_summary(self):
+        """Build the file attribute/profile validation section."""
         if self.files_failed != []:
             self.file_attributes_report = f"""
 ERROR: {len(self.files_failed)} files failed profile validation.  See log for complete list.
