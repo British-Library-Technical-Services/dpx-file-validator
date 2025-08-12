@@ -1,3 +1,34 @@
+"""DPX File Validation Service.
+
+This module provides the CLI / GUI (folder chooser) workflow for
+validating DPX film scan sequences and accompanying magnetic (mag) audio files.
+It performs two broad phases:
+
+1. Inventory phase – walk the provided directory tree, derive inventory
+   metadata for recognised file types, and write results out through the
+   `InventoryGenerator` helper.
+2. Validation phase – for each discovered file it validates:
+   - Technical / format attributes via `FileValidator` (MediaInfo parsing etc.)
+   - Presence and correctness of checksum sidecar (mag) or sequence manifest
+     (film) via `ChecksumValidator`.
+   - DPX sequence completeness (frame count) via `SequenceValidator`.
+
+High‑level flow (see `main`):
+    initialise -> inventory pass (spinner + progress messages) ->
+    validation pass (attribute + checksum + sequence) -> summary logging.
+
+Side effects:
+    Logs progress and errors, updates several module‑level cumulative lists
+    used for the final summary, and prints billboard style status messages.
+
+Exit codes:
+    On unrecoverable errors (e.g. no directory chosen, filesystem errors) the
+    process exits with a non‑zero status after logging a critical message.
+
+Public entry point:
+    Run the module directly to launch the validation workflow.
+"""
+
 import logging
 import os
 from dotenv import load_dotenv
@@ -25,6 +56,18 @@ checksums_verified = []
 checksums_failed = []
 
 def test_source_location():
+    """Return a test source directory from the environment if configured.
+
+    Looks up the TEST_LOCATION env var (after loading a .env file). If the
+    variable exists and is non‑empty the path is returned; otherwise the
+    function logs an error and terminates the process.
+
+    Returns:
+        str: Absolute or relative path specified in TEST_LOCATION.
+
+    Side Effects:
+        Logs errors; may call sys.exit() on failure.
+    """
     load_dotenv()
     try:
         location = os.getenv("TEST_LOCATION")
@@ -43,6 +86,17 @@ def test_source_location():
 
 
 def set_source_location():
+    """Prompt the user (native folder chooser) to select a source directory.
+
+    Uses Tkinter's directory selection dialog (raised above other windows).
+    Returns the chosen directory path or exits if the user cancels.
+
+    Returns:
+        str: User‑selected directory path.
+
+    Side Effects:
+        Opens a GUI dialog; logs errors and may terminate the process.
+    """
     root = tk.Tk()
     root.withdraw()
     root.attributes("-topmost", True)
@@ -64,6 +118,14 @@ def set_source_location():
 
 
 def intialise_service():
+    """Initialise logging and select the source location.
+
+    Combines directory selection (interactive) with logger setup and timestamp.
+
+    Returns:
+        tuple(datetime, str, logging.Logger): start time, selected location,
+            and a module logger instance.
+    """
     start_time = datetime.now()
     # location = test_source_location()
     location = set_source_location()
@@ -74,6 +136,18 @@ def intialise_service():
 
 
 def inventory_validation(location, file):
+    """Generate inventory metadata for a single file.
+
+    Steps:
+        1. Parse file name & type.
+        2. Load / parse JSON inventory file if present.
+        3. Parse object keys (domain specific metadata derivation).
+        4. Write inventory data out (side effect defined by InventoryGenerator).
+
+    Args:
+        location (str): Directory path used as the context root.
+        file (str): Absolute path (or relative within location) of the file.
+    """
     inventory_generator = InventoryGenerator(location, file)
     inventory_generator.parse_file_name_and_type()
     inventory_generator.read_json_inventory()
@@ -82,6 +156,14 @@ def inventory_validation(location, file):
 
 
 def file_attributes_validation(file):
+    """Validate technical / format attributes for the given file.
+
+    Args:
+        file (str): Path to the media file (DPX or mag).
+
+    Returns:
+        bool: True if format attributes are verified, False otherwise.
+    """
     file_validator = FileValidator(file)
     file_validator.read_attributes()
     file_validator.format_attributes_validation()
@@ -90,6 +172,15 @@ def file_attributes_validation(file):
 
 
 def checksum_validation(file, checksums):
+    """Validate a file against a checksum sidecar / manifest.
+
+    Args:
+        file (str): Path to the file whose integrity is being checked.
+        checksums (str): Path to the checksum sidecar or manifest file.
+
+    Returns:
+        bool: True if the file's computed hash matches the manifest entry.
+    """
     checksum_validator = ChecksumValidator(file, checksums)
     checksum_validator.generate_file_hash()
     checksum_validator.file_name_extract()
@@ -100,6 +191,20 @@ def checksum_validation(file, checksums):
 
 
 def dpx_sequence_check(files, path):
+    """Run DPX sequence completeness checks for a directory of frames.
+
+    Resolves the expected checksum/manifest file pattern from config, locates
+    it, and uses `SequenceValidator` to compare manifest line count with the
+    number of DPX frame files present.
+
+    Args:
+        files (list[str]): Ordered list of DPX frame file paths.
+        path (str): Directory containing the sequence and manifest.
+
+    Returns:
+        tuple(list[str], SequenceValidator): The located manifest path(s) and
+        the configured validator instance (post counting operations).
+    """
     md5 = config.CONFIG["extensions"]["CHECKSUM"]
     checksum_manifest = glob.glob(os.path.join(path, md5))
     sequence_validator = SequenceValidator(files, checksum_manifest[0], path)
@@ -110,11 +215,22 @@ def dpx_sequence_check(files, path):
 
 
 def process_file_inventory(files, path):
+    """Process inventory generation for a list of media files.
+
+    Args:
+        files (list[str]): File paths to include in inventory.
+        path (str): Directory context passed to inventory generation.
+    """
     for file in files:
         inventory_validation(path, file)
 
 
 def process_file_validation(files):
+    """Validate format attributes for each file, recording failures.
+
+    Args:
+        files (list[str]): Media file paths to validate.
+    """
     for file in tqdm(files, desc="MediaInfo"):
         format_verified = file_attributes_validation(file)
         if not format_verified:
@@ -122,6 +238,14 @@ def process_file_validation(files):
         
 
 def mag_checksum_validation(files):
+    """Validate checksum sidecars for mag files (one sidecar per file).
+
+    For each file, constructs sidecar filename using configured extension and
+    runs checksum comparison if present; logs an error when missing.
+
+    Args:
+        files (list[str]): Mag file paths.
+    """
     checksum_format = config.CONFIG["extensions"]["HASH_FORMAT"]
     for file in tqdm(files, desc="Checksums"):
         checksum_file = f"{file}.{checksum_format}"
@@ -138,6 +262,12 @@ def mag_checksum_validation(files):
 
 
 def film_checksum_validation(files, checksum_file):
+    """Validate a batch of film (DPX) files against a shared manifest.
+
+    Args:
+        files (list[str]): DPX frame file paths.
+        checksum_file (str): Path to the manifest containing expected hashes.
+    """
     for file in tqdm(files, desc="Checksums"):
         hash_verified = checksum_validation(file, checksum_file)
 
@@ -148,6 +278,19 @@ def film_checksum_validation(files, checksum_file):
 
 
 def main():
+    """Module entry point executing the full validation workflow.
+
+    Phases:
+        1. Initialise service (logging + start time + directory selection).
+        2. Walk tree generating inventory data.
+        3. Walk tree validating attributes, DPX sequence integrity, and
+           checksums (mag per-file, DPX via manifest).
+        4. Log summary statistics.
+
+    Side Effects:
+        Performs logging, updates module-level tracking lists, prints status
+        messages, and may terminate process on severe errors.
+    """
     MAG = config.CONFIG["extensions"]["MAG"]
     FILM = config.CONFIG["extensions"]["FILM"]
 
