@@ -1,3 +1,6 @@
+"""Global configuration constants for the DPX validation service.
+"""
+
 CONFIG = {
     "extensions": {
         "MAG": "*.wav",
